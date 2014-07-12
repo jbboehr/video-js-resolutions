@@ -414,9 +414,10 @@ videojs.plugin('resolutions', function(options) {
   ResolutionsButton.prototype.className = 'vjs-resolutions-button';
 
   // Add Button to controlBar
-  videojs.obj.merge(player.controlBar.options_['children'], {
+  /* videojs.obj.merge(player.controlBar.options_['children'], {
     'resolutionsButton': {}
-  });
+  }); */
+  /* videojs.ResolutionsButton = ResolutionsButton; */
 
   // let's get the party started!
   // we have to grab the parsed sources and select the source with our
