@@ -7,6 +7,9 @@
 // plugin closure and grafts itself on to *the instance on which it was
 // called* rather than on the videojs player prototype.  I don't expect
 // this to be a big deal for anybody.
+
+/* global videojs, MediaPlayer */
+
 videojs.plugin('resolutions', function(options) {
   var player = this;
 
@@ -25,6 +28,7 @@ videojs.plugin('resolutions', function(options) {
 
   this.resolutions_ = {
     options_: {},
+    abrEnabled: true,
 
     // takes an existing stream and stops the download entirely
     // without killing the player or disposing of the tech
@@ -260,14 +264,85 @@ videojs.plugin('resolutions', function(options) {
       var actualRes = preferredRes > maxRes ? maxRes : preferredRes;
 
       return typeSources[actualRes];
+    },
+    
+    dashManfiestToSourceResolutions: function(manifest) {
+        var sources = [];
+        var index = 0;
+        videojs.obj.each(manifest.Period.AdaptationSet, function(i, s) {
+            if( s.mimeType !== 'video/mp4' ) {
+                return;
+            }
+            videojs.obj.each(s.Representation, function(i, s) {
+                sources.push({
+                    //index: index++,
+                    index: i,
+                    isDash: true,
+                    type: "application/dash+xml",
+                    width: s.width,
+                    height: s.height,
+                    'data-res': s.width + 'x' + s.height,
+                    manifest: s
+                });
+            }, player);
+        }, player);
+        sources.push({
+            index: index++,
+            isDash: true,
+            type: "application/dash+xml",
+            'data-res': 'Auto'
+        });
+        return sources;
+    },
+    
+    initControlBar: function() {
+        var button = new ResolutionsButton(player);
+        player.controlBar.addChild(button);
+    },
+    
+    onDashManfiestLoaded: function(event) {
+        var res = this.dashManfiestToSourceResolutions(event.data);
+        this.options_['sourceResolutions'] = res;
+        this.initControlBar();
+        player.trigger('dashManifestLoaded', event);
+    },
+    
+    onDashStreamSwitch: function(event) {
+        this.dashStreamInfo = event.data.toStreamInfo;
+    },
+    
+    onDashMetricChanged: function(event) {
+        player.trigger('dashMetricChanged', event);
+    },
+    
+    onReady: function(source) {
+        player.changeResolution(source);
+        
+        if( player.techName !== 'Dashjs' ) {
+            return this.initControlBar();
+        }
+        
+        player.mediaPlayer.addEventListener(
+                MediaPlayer.events.MANIFEST_LOADED,
+                videojs.bind(this, this.onDashManfiestLoaded));
+        player.mediaPlayer.addEventListener(
+                MediaPlayer.events.METRIC_CHANGED,
+                videojs.bind(this, this.onDashMetricChanged));
+        player.mediaPlayer.addEventListener(
+                MediaPlayer.events.STREAM_SWITCH_COMPLETED,
+                videojs.bind(this, this.onDashStreamSwitch));
+    },
+    
+    changeResolutionDash: function(new_source) {
+        var mediaPlayer = player.mediaPlayer;
+        //var metricsExt = mediaPlayer.getMetricsExt();
+        //var max = metricsExt.getMaxIndexForBufferType('video', this.dashStreamInfo.index);
+        this.abrEnabled = !new_source.width;
+        this.requestedDashResolution = new_source.index;
+        
+        mediaPlayer.setAutoSwitchQuality(this.abrEnabled);
+        mediaPlayer.setQualityFor('video', parseInt(new_source.index));
     }
-  };
-
-  // convenience method
-  // @return {String} cached resolution label:
-  // "SD"
-  player.resolution = function(){
-      return this.cache_.src.res;
   };
 
   // takes a source and switches the player's stream to it on the fly
@@ -279,6 +354,10 @@ videojs.plugin('resolutions', function(options) {
   //     "src": "http://some_video_url_sd"
   // }
   player.changeResolution = function(new_source){
+    if( new_source.isDash ) {
+        player.resolutions_.changeResolutionDash(new_source);
+        return;
+    }
     // has the exact same source been chosen?
     if (this.cache_.src === new_source.src){
       this.trigger('resolutionchange');
@@ -323,6 +402,13 @@ videojs.plugin('resolutions', function(options) {
     });
   };
 
+  // convenience method
+  // @return {String} cached resolution label:
+  // "SD"
+  player.resolution = function(){
+      return this.cache_.src.res;
+  };
+
   /* Resolution Menu Items
   ================================================================================ */
   var ResolutionMenuItem = videojs.MenuItem.extend({
@@ -336,6 +422,8 @@ videojs.plugin('resolutions', function(options) {
 
       this.player_.one('loadstart', vjs.bind(this, this.update));
       this.player_.on('resolutionchange', vjs.bind(this, this.update));
+      this.player_.on('dashMetricChanged', vjs.bind(this, this.update));
+      this.player_.on('dashManifestLoaded', vjs.bind(this, this.update));
     }
   });
 
@@ -346,10 +434,23 @@ videojs.plugin('resolutions', function(options) {
 
   ResolutionMenuItem.prototype.update = function(){
     var player = this.player_;
-    if ((player.cache_['src'] === this.source.src)) {
-      this.selected(true);
+    if( this.source.isDash ) {
+        var videoWidth = this.player_.tech.el_.videoWidth;
+        var abrEnabled = player.resolutions_.abrEnabled;
+        var requestedDashResolution = player.resolutions_.requestedDashResolution;
+        var matches = videoWidth === this.source.width;
+        var requested = abrEnabled ? !this.source.width : requestedDashResolution === this.source.index;
+        if (requested) {
+          this.selected(true);
+        } else {
+          this.selected(false);
+        }
     } else {
-      this.selected(false);
+        if ((player.cache_['src'] === this.source.src) && this.source.isDash) {
+          this.selected(true);
+        } else {
+          this.selected(false);
+        }
     }
   };
 
@@ -404,7 +505,7 @@ videojs.plugin('resolutions', function(options) {
   /**
    * @constructor
    */
-  ResolutionsButton = ResolutionButton.extend({
+  var ResolutionsButton = ResolutionButton.extend({
     /** @constructor */
     init: function(player, options, ready){
       ResolutionButton.call(this, player, options, ready);
@@ -428,10 +529,7 @@ videojs.plugin('resolutions', function(options) {
   // resolution-aware source selector
   var source = player.resolutions_.selectSource(player.options_['sources']);
 
-  // when the player is ready, add the resolution button to the control bar
-  player.ready(function(){
-    player.changeResolution(source);
-    var button = new ResolutionsButton(player);
-    player.controlBar.addChild(button);
+  player.ready(function() {
+      player.resolutions_.onReady(source);
   });
 });
