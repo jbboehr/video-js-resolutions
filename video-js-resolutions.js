@@ -281,11 +281,23 @@ videojs.plugin('resolutions', function(options) {
                     type: "application/dash+xml",
                     width: s.width,
                     height: s.height,
-                    'data-res': s.width + 'x' + s.height,
+                    'data-res': s.height + 'p', //s.width + 'x' + s.height,
                     manifest: s
                 });
             }, player);
         }, player);
+        
+        // Sort 
+        if( !options.sortDash ) {
+            sources = sources.sort(function(a, b) {
+                if( a.height === b.height ) {
+                    return 0;
+                } else {
+                    return a.height > b.height ? -1 : 1;
+                }
+            });
+        }
+        
         sources.push({
             index: index++,
             isDash: true,
