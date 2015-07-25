@@ -354,6 +354,10 @@ videojs.plugin('resolutions', function(options) {
         
         mediaPlayer.setAutoSwitchQuality(this.abrEnabled);
         mediaPlayer.setQualityFor('video', parseInt(new_source.index));
+        
+        this.previousDashSource = this.currentDashSource;
+        this.currentDashSource = new_source;
+        player.trigger('dashresolutionchange', new_source);
     }
   };
 
@@ -375,6 +379,8 @@ videojs.plugin('resolutions', function(options) {
       this.trigger('resolutionchange');
       return this; // basically a no-op
     }
+    player.resolutions_.previousSource = player.resolutions_.currentSource;
+    player.resolutions_.currentSource = new_source;
 
     // remember our position and playback state
     var curTime      = this.currentTime();
