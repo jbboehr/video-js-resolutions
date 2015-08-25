@@ -512,10 +512,12 @@ videojs.plugin('resolutions', function(options) {
   ResolutionButton.prototype.createItems = function(){
     var resolutions = this.sourceResolutions_ = this.player_.resolutions_.options_['sourceResolutions'];
     var items = [];
-    for (var i = 0; i < resolutions.length; i++) {
-      items.push(new ResolutionMenuItem(this.player_, {
-        'source': this.sourceResolutions_[i]
-      }));
+    if( resolutions ) {
+        for (var i = 0; i < resolutions.length; i++) {
+          items.push(new ResolutionMenuItem(this.player_, {
+            'source': this.sourceResolutions_[i]
+          }));
+        }
     }
     return items;
   };
