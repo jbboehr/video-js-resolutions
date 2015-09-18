@@ -273,7 +273,8 @@ videojs.plugin('resolutions', function(options) {
             if( s.mimeType !== 'video/mp4' ) {
                 return;
             }
-            videojs.obj.each(s.Representation, function(i, s) {
+            var Representations = s.Representation instanceof Array ? s.Representation : [s.Representation];
+            videojs.obj.each(Representations, function(i, s) {
                 sources.push({
                     //index: index++,
                     index: i,
