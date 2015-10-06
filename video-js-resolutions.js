@@ -330,20 +330,38 @@ videojs.plugin('resolutions', function(options) {
     
     onReady: function(source) {
         player.changeResolution(source);
+        player.one('dispose', videojs.bind(this, this.onDispose));
         
         if( player.techName !== 'Dashjs' ) {
             return this.initControlBar();
         }
         
+        this.ev1 = videojs.bind(this, this.onDashManfiestLoaded);
         player.mediaPlayer.addEventListener(
-                MediaPlayer.events.MANIFEST_LOADED,
-                videojs.bind(this, this.onDashManfiestLoaded));
+                MediaPlayer.events.MANIFEST_LOADED, this.ev1);
+        
+        this.ev2 = videojs.bind(this, this.onDashMetricChanged);
         player.mediaPlayer.addEventListener(
                 MediaPlayer.events.METRIC_CHANGED,
-                videojs.bind(this, this.onDashMetricChanged));
+                this.ev2);
+                
+        this.ev3 = videojs.bind(this, this.onDashStreamSwitch);
         player.mediaPlayer.addEventListener(
                 MediaPlayer.events.STREAM_SWITCH_COMPLETED,
-                videojs.bind(this, this.onDashStreamSwitch));
+                this.ev3);
+    },
+    
+    onDispose: function() {
+        if( player.techName !== 'Dashjs' ) {
+            return this.initControlBar();
+        }
+        
+        player.mediaPlayer.removeEventListener(
+                MediaPlayer.events.MANIFEST_LOADED, this.ev1);
+        player.mediaPlayer.removeEventListener(
+                MediaPlayer.events.METRIC_CHANGED, this.ev2);
+        player.mediaPlayer.removeEventListener(
+                MediaPlayer.events.STREAM_SWITCH_COMPLETED, this.ev3);
     },
     
     changeResolutionDash: function(new_source) {
