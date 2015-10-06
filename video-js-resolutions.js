@@ -267,6 +267,10 @@ videojs.plugin('resolutions', function(options) {
     },
     
     dashManfiestToSourceResolutions: function(manifest) {
+        if( manifest === null ) {
+            return;
+        }
+        
         var sources = [];
         var index = 0;
         videojs.obj.each(manifest.Period.AdaptationSet, function(i, s) {
