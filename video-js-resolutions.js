@@ -266,6 +266,21 @@ videojs.plugin('resolutions', function(options) {
       return typeSources[actualRes];
     },
     
+    isDash: function() {
+        return (
+            player.techName === 'Dashjs' ||
+            (vjs.Html5DashJS && player.tech.sourceHandler_ instanceof vjs.Html5DashJS)
+        );
+    },
+    
+    getMediaPlayer: function() {
+        if( player.mediaPlayer ) {
+            return player.mediaPlayer;
+        } else if( vjs.Html5DashJS && player.tech.sourceHandler_ instanceof vjs.Html5DashJS ) {
+            return player.tech.sourceHandler_.mediaPlayer_;
+        }
+    },
+    
     dashManfiestToSourceResolutions: function(manifest) {
         if( manifest === null ) {
             return;
@@ -336,40 +351,45 @@ videojs.plugin('resolutions', function(options) {
         player.changeResolution(source);
         player.one('dispose', videojs.bind(this, this.onDispose));
         
-        if( player.techName !== 'Dashjs' ) {
+        if( !this.isDash() ) {
             return this.initControlBar();
         }
         
+        var mediaPlayer = this.getMediaPlayer();
+        
         this.ev1 = videojs.bind(this, this.onDashManfiestLoaded);
-        player.mediaPlayer.addEventListener(
+        mediaPlayer.addEventListener(
                 MediaPlayer.events.MANIFEST_LOADED, this.ev1);
         
         this.ev2 = videojs.bind(this, this.onDashMetricChanged);
-        player.mediaPlayer.addEventListener(
+        mediaPlayer.addEventListener(
                 MediaPlayer.events.METRIC_CHANGED,
                 this.ev2);
                 
         this.ev3 = videojs.bind(this, this.onDashStreamSwitch);
-        player.mediaPlayer.addEventListener(
+        mediaPlayer.addEventListener(
                 MediaPlayer.events.STREAM_SWITCH_COMPLETED,
                 this.ev3);
     },
     
     onDispose: function() {
-        if( player.techName !== 'Dashjs' ) {
+        if( !this.isDash() ) {
             return this.initControlBar();
         }
         
-        player.mediaPlayer.removeEventListener(
+        var mediaPlayer = this.getMediaPlayer();
+        
+        mediaPlayer.removeEventListener(
                 MediaPlayer.events.MANIFEST_LOADED, this.ev1);
-        player.mediaPlayer.removeEventListener(
+        mediaPlayer.removeEventListener(
                 MediaPlayer.events.METRIC_CHANGED, this.ev2);
-        player.mediaPlayer.removeEventListener(
+        mediaPlayer.removeEventListener(
                 MediaPlayer.events.STREAM_SWITCH_COMPLETED, this.ev3);
     },
     
     changeResolutionDash: function(new_source) {
-        var mediaPlayer = player.mediaPlayer;
+        var mediaPlayer = this.getMediaPlayer();
+        
         //var metricsExt = mediaPlayer.getMetricsExt();
         //var max = metricsExt.getMaxIndexForBufferType('video', this.dashStreamInfo.index);
         this.abrEnabled = !new_source.width;
