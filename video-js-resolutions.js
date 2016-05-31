@@ -10,6 +10,8 @@
 
 /* global videojs, MediaPlayer */
 
+define(['videojs'], function(videojs) {
+
 videojs.plugin('resolutions', function(options) {
   var player = this;
 
@@ -595,4 +597,6 @@ videojs.plugin('resolutions', function(options) {
   player.ready(function() {
       player.resolutions_.onReady(source);
   });
+});
+
 });
