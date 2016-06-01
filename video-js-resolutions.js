@@ -191,7 +191,7 @@ videojs.plugin('resolutions', function(options) {
       var tech;
 
       for (var i=0,j=player.options_['techOrder'];i<j.length;i++) {
-        techName = videojs.capitalize(j[i]);
+        techName = videojs.capitalize ? videojs.capitalize(j[i]) : j[i];
         tech     = window['videojs'][techName];
 
         // Check if the browser supports this technology
@@ -474,7 +474,7 @@ videojs.plugin('resolutions', function(options) {
 
   /* Resolution Menu Items
   ================================================================================ */
-  var ResolutionMenuItem = videojs.MenuItem.extend({
+  var ResolutionMenuItem = videojs.extend(videojs.getComponent('MenuItem'), {
     init: function(player, options){
       // Modify options for parent MenuItem class's init.
       options['label'] = options.source['data-res'];
@@ -519,7 +519,7 @@ videojs.plugin('resolutions', function(options) {
 
   /* Resolutions Button
   ================================================================================ */
-  var ResolutionButton = videojs.MenuButton.extend({
+  var ResolutionButton = videojs.extend(videojs.getComponent('MenuButton'), {
     init: function(player, options) {
       videojs.MenuButton.call(this, player, options);
 
@@ -570,7 +570,7 @@ videojs.plugin('resolutions', function(options) {
   /**
    * @constructor
    */
-  var ResolutionsButton = ResolutionButton.extend({
+  var ResolutionsButton = videojs.extend(ResolutionButton, {
     /** @constructor */
     init: function(player, options, ready){
       ResolutionButton.call(this, player, options, ready);
